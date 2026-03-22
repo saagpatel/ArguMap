@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+	margin: 0;
+	overflow: hidden;
+	user-select: none;
+}
+
+/* Handle glow on node hover */
+.react-flow__node:hover .react-flow__handle {
+	box-shadow: 0 0 6px var(--handle-color, #3b82f6);
+	transition: box-shadow 150ms ease;
+}
+
+/* Handle hit target expansion to 24px */
+.react-flow__handle::before {
+	content: "";
+	position: absolute;
+	width: 24px;
+	height: 24px;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+/* Dark theme overrides for React Flow built-in controls */
+.react-flow__controls button {
+	background-color: #222 !important;
+	border-color: #333 !important;
+	fill: #ccc !important;
+}
+.react-flow__controls button:hover {
+	background-color: #333 !important;
+}
+
+/* Edge dash animation on hover */
+@keyframes edge-dash {
+	to {
+		stroke-dashoffset: -10;
+	}
+}
+
+/* Context menu for map library */
+.context-menu {
+	position: fixed;
+	z-index: 50;
+	min-width: 120px;
+	border-radius: 6px;
+	border: 1px solid #333;
+	background: #1a1a1a;
+	padding: 4px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.context-menu button {
+	display: block;
+	width: 100%;
+	padding: 6px 12px;
+	text-align: left;
+	font-size: 13px;
+	color: #e5e7eb;
+	border: none;
+	background: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.context-menu button:hover {
+	background: #2a2a2a;
+}
+
+/* Custom scrollbar — dark theme */
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: #333;
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: #444;
+}
+
+/* Ensure all native inputs match dark theme */
+input,
+textarea,
+select {
+	color-scheme: dark;
+}
+select {
+	background-color: #1c1c1c;
+	border: 1px solid #333;
+	border-radius: 6px;
+	padding: 6px 8px;
+	color: #e5e7eb;
+}
+select:focus {
+	outline: none;
+	border-color: #555;
+}
