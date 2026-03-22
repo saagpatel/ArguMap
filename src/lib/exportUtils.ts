@@ -1,6 +1,6 @@
 import { toPng } from "html-to-image";
 import type { ArgFlowEdge, ArgFlowNode } from "../types";
-import { EDGE_COLORS } from "../types";
+import { EDGE_COLORS, STRENGTH_COLORS } from "../types";
 import { tauriApi } from "./tauri";
 
 export async function exportAsPng(mapTitle: string): Promise<void> {
@@ -170,10 +170,14 @@ export function exportAsHtml(
 				n.data.node_type === "evidence" && n.data.source
 					? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #374151;font-size:11px;color:#9CA3AF;">${escapeHtml(n.data.source)}</div>`
 					: "";
+			const strengthHtml =
+				n.data.strength != null
+					? `<div style="margin-top:6px;height:4px;border-radius:2px;background:${STRENGTH_COLORS[n.data.strength]};width:${(n.data.strength / 5) * 100}%;"></div>`
+					: "";
 
 			return `    <div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;border:2px solid ${config.border};background:${config.bg};border-radius:8px;padding:28px 12px 12px;">
       <span style="position:absolute;left:8px;top:4px;background:${config.border};color:white;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;">${config.label}</span>
-      <div style="color:#E5E7EB;font-size:14px;">${escapeHtml(n.data.content)}</div>${sourceHtml}
+      <div style="color:#E5E7EB;font-size:14px;">${escapeHtml(n.data.content)}</div>${sourceHtml}${strengthHtml}
     </div>`;
 		})
 		.join("\n");

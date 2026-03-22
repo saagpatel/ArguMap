@@ -1,7 +1,12 @@
 import type { Node } from "@xyflow/react";
 import { Handle, type NodeProps, NodeResizer, Position } from "@xyflow/react";
 import { type ReactNode, useEffect, useRef } from "react";
-import { type ArgNodeData, NODE_CONFIG, NODE_DEFAULTS } from "../../../types";
+import {
+	type ArgNodeData,
+	NODE_CONFIG,
+	NODE_DEFAULTS,
+	STRENGTH_COLORS,
+} from "../../../types";
 
 interface BaseNodeProps extends NodeProps<Node<ArgNodeData>> {
 	children?: ReactNode;
@@ -129,6 +134,17 @@ export default function BaseNode({
 				onInput={handleInput}
 				rows={1}
 			/>
+
+			{/* Strength indicator bar */}
+			{data.strength != null && (
+				<div
+					className="mt-1 h-1 rounded-full"
+					style={{
+						backgroundColor: STRENGTH_COLORS[data.strength],
+						width: `${(data.strength / 5) * 100}%`,
+					}}
+				/>
+			)}
 
 			{/* Extension slot for EvidenceNode source input */}
 			{children}

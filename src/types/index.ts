@@ -21,6 +21,7 @@ export interface ArgNode {
 	y: number;
 	width: number;
 	height: number;
+	strength?: number;
 }
 
 export interface ArgEdge {
@@ -41,6 +42,7 @@ export interface NodePayload {
 	y: number;
 	width: number;
 	height: number;
+	strength?: number;
 }
 
 export interface EdgePayload {
@@ -57,6 +59,7 @@ export type ArgNodeData = {
 	source?: string;
 	width?: number;
 	height?: number;
+	strength?: number;
 	// Ephemeral collapse UI state — not synced to DB
 	isCollapsed?: boolean;
 	hiddenDescendantCount?: number;
@@ -73,6 +76,14 @@ export type ArgNodeData = {
 			>
 		>,
 	) => void;
+};
+
+export const STRENGTH_COLORS: Record<number, string> = {
+	1: "#EF4444", // red — very weak
+	2: "#F97316", // orange — weak
+	3: "#FBBF24", // amber — moderate
+	4: "#84CC16", // lime — strong
+	5: "#10B981", // green — very strong
 };
 
 export const EDGE_COLORS: Record<EdgeType, string> = {

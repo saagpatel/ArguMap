@@ -4,6 +4,7 @@ import {
 	type ArgNodeData,
 	NODE_CONFIG,
 	type NodeType,
+	STRENGTH_COLORS,
 } from "../../types";
 
 const NODE_TYPE_OPTIONS: { value: NodeType; label: string }[] = [
@@ -90,6 +91,36 @@ export default function NodeEditor({ node, onUpdate }: NodeEditorProps) {
 					/>
 				</div>
 			)}
+
+			{/* Strength scoring */}
+			<div>
+				<label className="mb-1 block text-xs text-zinc-400">Strength</label>
+				<div className="flex items-center gap-1.5">
+					{[1, 2, 3, 4, 5].map((level) => (
+						<button
+							key={level}
+							onClick={() =>
+								onUpdate(node.id, {
+									strength: node.data.strength === level ? undefined : level,
+								})
+							}
+							className="h-6 w-6 rounded-full border-2 transition-all hover:scale-110"
+							style={{
+								borderColor: STRENGTH_COLORS[level],
+								backgroundColor:
+									node.data.strength !== undefined &&
+									node.data.strength >= level
+										? STRENGTH_COLORS[level]
+										: "transparent",
+							}}
+							title={`Strength ${level}`}
+						/>
+					))}
+					<span className="ml-2 text-xs text-zinc-500">
+						{node.data.strength ? `${node.data.strength}/5` : "Not rated"}
+					</span>
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -28,10 +28,18 @@ pub fn init_db() -> Result<DbPool, String> {
     conn.execute_batch("PRAGMA foreign_keys=ON;")
         .map_err(|e| format!("Failed to enable foreign keys: {e}"))?;
 
-    // Run migration
-    let migration = include_str!("../migrations/001_initial.sql");
-    conn.execute_batch(migration)
-        .map_err(|e| format!("Failed to run migration: {e}"))?;
+    // Run migration 1 — initial schema (idempotent via IF NOT EXISTS)
+    let migration1 = include_str!("../migrations/001_initial.sql");
+    conn.execute_batch(migration1)
+        .map_err(|e| format!("Failed to run migration 1: {e}"))?;
+
+    // Run migration 2 (add strength column) — idempotent via column existence check
+    let has_strength: bool = conn.prepare("SELECT strength FROM nodes LIMIT 0").is_ok();
+    if !has_strength {
+        let migration2 = include_str!("../migrations/002_add_strength.sql");
+        conn.execute_batch(migration2)
+            .map_err(|e| format!("Failed to run migration 2: {e}"))?;
+    }
 
     Ok(Mutex::new(conn))
 }

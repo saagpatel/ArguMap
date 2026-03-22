@@ -20,6 +20,7 @@ pub struct ArgNode {
     pub y: f64,
     pub width: f64,
     pub height: f64,
+    pub strength: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -42,6 +43,7 @@ pub struct NodePayload {
     pub y: f64,
     pub width: f64,
     pub height: f64,
+    pub strength: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]

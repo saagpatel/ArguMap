@@ -78,7 +78,7 @@ pub fn load_map(db: State<'_, DbPool>, map_id: String) -> Result<serde_json::Val
 
     // Load nodes
     let mut node_stmt = conn
-        .prepare("SELECT id, map_id, node_type, content, source, x, y, width, height FROM nodes WHERE map_id = ?1")
+        .prepare("SELECT id, map_id, node_type, content, source, x, y, width, height, strength FROM nodes WHERE map_id = ?1")
         .map_err(|e| e.to_string())?;
 
     let nodes: Vec<ArgNode> = node_stmt
@@ -93,6 +93,7 @@ pub fn load_map(db: State<'_, DbPool>, map_id: String) -> Result<serde_json::Val
                 y: row.get(6)?,
                 width: row.get(7)?,
                 height: row.get(8)?,
+                strength: row.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -151,8 +152,8 @@ pub fn save_map_state(
     // Insert all nodes
     for node in &nodes {
         conn.execute(
-            "INSERT INTO nodes (id, map_id, node_type, content, source, x, y, width, height) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![node.id, map_id, node.node_type, node.content, node.source, node.x, node.y, node.width, node.height],
+            "INSERT INTO nodes (id, map_id, node_type, content, source, x, y, width, height, strength) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![node.id, map_id, node.node_type, node.content, node.source, node.x, node.y, node.width, node.height, node.strength],
         )
         .map_err(|e| {
             let _ = conn.execute_batch("ROLLBACK;");
@@ -210,7 +211,7 @@ pub fn export_map_json(db: State<'_, DbPool>, map_id: String) -> Result<String, 
 
     // Load nodes
     let mut node_stmt = conn
-        .prepare("SELECT id, map_id, node_type, content, source, x, y, width, height FROM nodes WHERE map_id = ?1")
+        .prepare("SELECT id, map_id, node_type, content, source, x, y, width, height, strength FROM nodes WHERE map_id = ?1")
         .map_err(|e| e.to_string())?;
 
     let nodes: Vec<ArgNode> = node_stmt
@@ -225,6 +226,7 @@ pub fn export_map_json(db: State<'_, DbPool>, map_id: String) -> Result<String, 
                 y: row.get(6)?,
                 width: row.get(7)?,
                 height: row.get(8)?,
+                strength: row.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?
