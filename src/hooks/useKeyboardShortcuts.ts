@@ -4,15 +4,14 @@ import type { NodeType } from "../types";
 export function useKeyboardShortcuts(
 	onAddNode: (type: NodeType) => void,
 	onUndo: () => void,
-	onExport: () => void,
+	onExportPng: () => void,
+	onExportHtml: () => void,
 ) {
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			// Suppress when typing in input fields
 			const target = e.target as HTMLElement;
 			if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
 
-			// Cmd/Ctrl shortcuts
 			if (e.metaKey || e.ctrlKey) {
 				switch (e.key.toLowerCase()) {
 					case "z":
@@ -21,13 +20,16 @@ export function useKeyboardShortcuts(
 						return;
 					case "e":
 						e.preventDefault();
-						onExport();
+						if (e.shiftKey) {
+							onExportHtml();
+						} else {
+							onExportPng();
+						}
 						return;
 				}
 				return;
 			}
 
-			// Don't interfere with other modifier combos
 			if (e.altKey) return;
 
 			switch (e.key.toLowerCase()) {
@@ -48,5 +50,5 @@ export function useKeyboardShortcuts(
 
 		document.addEventListener("keydown", handler);
 		return () => document.removeEventListener("keydown", handler);
-	}, [onAddNode, onUndo, onExport]);
+	}, [onAddNode, onUndo, onExportPng, onExportHtml]);
 }

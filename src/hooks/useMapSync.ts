@@ -26,6 +26,7 @@ export function useMapSync(mapId: string | null) {
 			y: n.position.y,
 			width: n.measured?.width ?? n.data.width ?? 220,
 			height: n.measured?.height ?? n.data.height ?? 80,
+			strength: n.data.strength,
 		}));
 
 		const edges: EdgePayload[] = getEdges().map((e) => ({

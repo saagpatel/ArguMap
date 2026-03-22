@@ -36,6 +36,7 @@ export function useMapLoader(
 						source: node.source,
 						width: node.width,
 						height: node.height,
+						strength: node.strength,
 						onUpdate,
 					},
 				}));

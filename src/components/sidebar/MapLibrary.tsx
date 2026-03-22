@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import type { TemplateKey } from "../../lib/templates";
 import type { ArgMap } from "../../types";
+import TemplatePickerModal from "./TemplatePickerModal";
 
 interface MapLibraryProps {
 	maps: ArgMap[];
 	activeMapId: string | null;
 	onSelectMap: (mapId: string) => void;
 	onCreateMap: () => void;
+	onCreateFromTemplate: (key: TemplateKey) => void;
 	onRenameMap: (mapId: string, title: string) => void;
 	onDeleteMap: (mapId: string) => void;
 }
@@ -21,12 +24,14 @@ export default function MapLibrary({
 	activeMapId,
 	onSelectMap,
 	onCreateMap,
+	onCreateFromTemplate,
 	onRenameMap,
 	onDeleteMap,
 }: MapLibraryProps) {
 	const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 	const [renamingMapId, setRenamingMapId] = useState<string | null>(null);
 	const [renameValue, setRenameValue] = useState("");
+	const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 	const renameInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -102,12 +107,20 @@ export default function MapLibrary({
 				<h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
 					Maps
 				</h3>
-				<button
-					onClick={onCreateMap}
-					className="rounded px-1.5 py-0.5 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
-				>
-					+ New
-				</button>
+				<div className="flex gap-1">
+					<button
+						onClick={() => setShowTemplatePicker(true)}
+						className="rounded px-1.5 py-0.5 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+					>
+						Template
+					</button>
+					<button
+						onClick={onCreateMap}
+						className="rounded px-1.5 py-0.5 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+					>
+						+ New
+					</button>
+				</div>
 			</div>
 
 			<div className="flex flex-col gap-0.5">
@@ -176,6 +189,15 @@ export default function MapLibrary({
 						</div>
 					);
 				})()}
+			{showTemplatePicker && (
+				<TemplatePickerModal
+					onSelect={(key) => {
+						setShowTemplatePicker(false);
+						onCreateFromTemplate(key);
+					}}
+					onCancel={() => setShowTemplatePicker(false)}
+				/>
+			)}
 		</div>
 	);
 }
