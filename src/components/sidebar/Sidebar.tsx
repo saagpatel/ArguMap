@@ -1,10 +1,5 @@
-import type {
-	ArgFlowNode,
-	ArgMap,
-	ArgNodeData,
-	NodeType,
-	TemplateKey,
-} from "../../types";
+import type { TemplateKey } from "../../lib/templates";
+import type { ArgFlowNode, ArgMap, ArgNodeData, NodeType } from "../../types";
 import AddNodePanel from "./AddNodePanel";
 import MapLibrary from "./MapLibrary";
 import NodeEditor from "./NodeEditor";

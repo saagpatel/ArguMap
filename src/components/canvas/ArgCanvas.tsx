@@ -21,6 +21,7 @@ import { useMapSync } from "../../hooks/useMapSync";
 import { useUndo } from "../../hooks/useUndo";
 import { exportAsHtml, exportAsPng } from "../../lib/exportUtils";
 import { createNode } from "../../lib/nodeFactory";
+import type { TemplateKey } from "../../lib/templates";
 import type {
 	ArgFlowEdge,
 	ArgFlowNode,
@@ -28,7 +29,6 @@ import type {
 	ArgNodeData,
 	EdgeType,
 	NodeType,
-	TemplateKey,
 } from "../../types";
 import Sidebar from "../sidebar/Sidebar";
 import EdgeTypeModal from "./EdgeTypeModal";

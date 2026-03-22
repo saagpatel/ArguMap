@@ -105,5 +105,3 @@ export const NODE_DEFAULTS = {
 
 export type ArgFlowNode = Node<ArgNodeData, NodeType>;
 export type ArgFlowEdge = Edge<{ edge_type: EdgeType; label?: string }>;
-
-export type TemplateKey = "five_whys" | "pro_con" | "mece";

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { ArgMap, TemplateKey } from "../../types";
+import type { TemplateKey } from "../../lib/templates";
+import type { ArgMap } from "../../types";
 import TemplatePickerModal from "./TemplatePickerModal";
 
 interface MapLibraryProps {
