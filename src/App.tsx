@@ -2,6 +2,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ArgCanvas from "./components/canvas/ArgCanvas";
 import { tauriApi } from "./lib/tauri";
+import { TEMPLATES, type TemplateKey } from "./lib/templates";
 import type { ArgMap } from "./types";
 
 function App() {
@@ -109,6 +110,25 @@ function App() {
 		[activeMapId, refreshMaps],
 	);
 
+	// Create map from template
+	const handleCreateFromTemplate = useCallback(
+		(key: TemplateKey) => {
+			const template = TEMPLATES[key];
+			const { nodes, edges } = template.create();
+			tauriApi
+				.createMap(template.name)
+				.then((newMap) => {
+					return tauriApi.saveMapState(newMap.id, nodes, edges).then(() => {
+						setActiveMapId(newMap.id);
+						setMapTitle(newMap.title);
+						refreshMaps();
+					});
+				})
+				.catch(console.error);
+		},
+		[refreshMaps],
+	);
+
 	// Inline title rename
 	const handleTitleClick = useCallback(() => {
 		setEditingTitle(true);
@@ -160,6 +180,7 @@ function App() {
 							activeMapId={activeMapId}
 							onSelectMap={handleSelectMap}
 							onCreateMap={handleCreateMap}
+							onCreateFromTemplate={handleCreateFromTemplate}
 							onRenameMap={handleRenameMap}
 							onDeleteMap={handleDeleteMap}
 						/>

@@ -1,4 +1,10 @@
-import type { ArgFlowNode, ArgMap, ArgNodeData, NodeType } from "../../types";
+import type {
+	ArgFlowNode,
+	ArgMap,
+	ArgNodeData,
+	NodeType,
+	TemplateKey,
+} from "../../types";
 import AddNodePanel from "./AddNodePanel";
 import MapLibrary from "./MapLibrary";
 import NodeEditor from "./NodeEditor";
@@ -8,6 +14,7 @@ interface SidebarProps {
 	activeMapId: string | null;
 	onSelectMap: (mapId: string) => void;
 	onCreateMap: () => void;
+	onCreateFromTemplate: (key: TemplateKey) => void;
 	onRenameMap: (mapId: string, title: string) => void;
 	onDeleteMap: (mapId: string) => void;
 	onAddNode: (type: NodeType) => void;
@@ -20,6 +27,7 @@ export default function Sidebar({
 	activeMapId,
 	onSelectMap,
 	onCreateMap,
+	onCreateFromTemplate,
 	onRenameMap,
 	onDeleteMap,
 	onAddNode,
@@ -34,6 +42,7 @@ export default function Sidebar({
 					activeMapId={activeMapId}
 					onSelectMap={onSelectMap}
 					onCreateMap={onCreateMap}
+					onCreateFromTemplate={onCreateFromTemplate}
 					onRenameMap={onRenameMap}
 					onDeleteMap={onDeleteMap}
 				/>

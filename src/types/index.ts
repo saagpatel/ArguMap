@@ -57,9 +57,21 @@ export type ArgNodeData = {
 	source?: string;
 	width?: number;
 	height?: number;
+	// Ephemeral collapse UI state — not synced to DB
+	isCollapsed?: boolean;
+	hiddenDescendantCount?: number;
+	onToggleCollapse?: (id: string) => void;
 	onUpdate: (
 		id: string,
-		updates: Partial<Omit<ArgNodeData, "onUpdate">>,
+		updates: Partial<
+			Omit<
+				ArgNodeData,
+				| "onUpdate"
+				| "onToggleCollapse"
+				| "isCollapsed"
+				| "hiddenDescendantCount"
+			>
+		>,
 	) => void;
 };
 
@@ -93,3 +105,5 @@ export const NODE_DEFAULTS = {
 
 export type ArgFlowNode = Node<ArgNodeData, NodeType>;
 export type ArgFlowEdge = Edge<{ edge_type: EdgeType; label?: string }>;
+
+export type TemplateKey = "five_whys" | "pro_con" | "mece";

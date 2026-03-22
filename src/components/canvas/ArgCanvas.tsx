@@ -14,11 +14,12 @@ import {
 } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { useCollapse } from "../../hooks/useCollapse";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { useMapLoader } from "../../hooks/useMapLoader";
 import { useMapSync } from "../../hooks/useMapSync";
 import { useUndo } from "../../hooks/useUndo";
-import { exportAsPng } from "../../lib/exportUtils";
+import { exportAsHtml, exportAsPng } from "../../lib/exportUtils";
 import { createNode } from "../../lib/nodeFactory";
 import type {
 	ArgFlowEdge,
@@ -27,6 +28,7 @@ import type {
 	ArgNodeData,
 	EdgeType,
 	NodeType,
+	TemplateKey,
 } from "../../types";
 import Sidebar from "../sidebar/Sidebar";
 import EdgeTypeModal from "./EdgeTypeModal";
@@ -41,6 +43,7 @@ interface ArgCanvasProps {
 	activeMapId: string | null;
 	onSelectMap: (mapId: string) => void;
 	onCreateMap: () => void;
+	onCreateFromTemplate: (key: TemplateKey) => void;
 	onRenameMap: (mapId: string, title: string) => void;
 	onDeleteMap: (mapId: string) => void;
 }
@@ -52,6 +55,7 @@ export default function ArgCanvas({
 	activeMapId,
 	onSelectMap,
 	onCreateMap,
+	onCreateFromTemplate,
 	onRenameMap,
 	onDeleteMap,
 }: ArgCanvasProps) {
@@ -62,7 +66,7 @@ export default function ArgCanvas({
 	);
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-	const { screenToFlowPosition, fitView } = useReactFlow<
+	const { screenToFlowPosition, fitView, getNodes, getEdges } = useReactFlow<
 		ArgFlowNode,
 		ArgFlowEdge
 	>();
@@ -81,10 +85,46 @@ export default function ArgCanvas({
 		clear: clearUndo,
 	} = useUndo(setNodes, setEdges, syncImmediate);
 
-	// Clear undo history when map changes
+	// Collapse/expand hook
+	const {
+		collapsedNodeIds,
+		hiddenNodeIds,
+		toggleCollapse,
+		getDescendantCount,
+		hasDescendants,
+		clear: clearCollapse,
+	} = useCollapse(edges);
+
+	// Clear undo + collapse when map changes
 	useEffect(() => {
 		clearUndo();
-	}, [mapId, clearUndo]);
+		clearCollapse();
+	}, [mapId, clearUndo, clearCollapse]);
+
+	// Apply hidden state from collapse
+	useEffect(() => {
+		setNodes((nds) =>
+			nds.map((n) => ({
+				...n,
+				hidden: hiddenNodeIds.has(n.id),
+				data: {
+					...n.data,
+					isCollapsed: collapsedNodeIds.has(n.id),
+					hiddenDescendantCount: collapsedNodeIds.has(n.id)
+						? getDescendantCount(n.id)
+						: 0,
+					onToggleCollapse: hasDescendants(n.id) ? toggleCollapse : undefined,
+				},
+			})),
+		);
+	}, [
+		hiddenNodeIds,
+		collapsedNodeIds,
+		setNodes,
+		toggleCollapse,
+		getDescendantCount,
+		hasDescendants,
+	]);
 
 	// Stable onUpdate via ref pattern — identity never changes, avoids node re-renders
 	// Also handles type switching: updates node.type when node_type changes
@@ -254,15 +294,19 @@ export default function ArgCanvas({
 
 	// --- Export ---
 
-	const handleExport = useCallback(async () => {
+	const handleExportPng = useCallback(async () => {
 		if (!mapId) return;
 		await fitView({ padding: 0.1, duration: 0 });
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		await exportAsPng(mapTitle);
 	}, [mapId, fitView, mapTitle]);
 
-	// Keyboard shortcuts (C/E/R/Shift+R, Cmd+Z, Cmd+E)
-	useKeyboardShortcuts(handleAddNode, undo, handleExport);
+	const handleExportHtml = useCallback(() => {
+		exportAsHtml(getNodes(), getEdges(), mapTitle);
+	}, [getNodes, getEdges, mapTitle]);
+
+	// Keyboard shortcuts
+	useKeyboardShortcuts(handleAddNode, undo, handleExportPng, handleExportHtml);
 
 	// Derive selected node for sidebar
 	const selectedNode =
@@ -278,6 +322,7 @@ export default function ArgCanvas({
 					activeMapId={activeMapId}
 					onSelectMap={onSelectMap}
 					onCreateMap={onCreateMap}
+					onCreateFromTemplate={onCreateFromTemplate}
 					onRenameMap={onRenameMap}
 					onDeleteMap={onDeleteMap}
 					onAddNode={handleAddNode}
