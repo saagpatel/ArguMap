@@ -188,6 +188,340 @@ pub fn save_map_state(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use rusqlite::{params, Connection};
+
+    /// Run both migrations on an in-memory connection, mirroring what init_db() does.
+    fn setup_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+        conn.execute_batch(include_str!("../migrations/001_initial.sql"))
+            .unwrap();
+        // migration 2 is always needed on a fresh in-memory db
+        conn.execute_batch(include_str!("../migrations/002_add_strength.sql"))
+            .unwrap();
+        conn
+    }
+
+    fn insert_map(conn: &Connection, id: &str) {
+        conn.execute(
+            "INSERT INTO maps (id, title, created_at, updated_at) VALUES (?1, 'Test Map', '2024-01-01 00:00:00', '2024-01-01 00:00:00')",
+            params![id],
+        )
+        .unwrap();
+    }
+
+    fn insert_nodes(conn: &Connection, map_id: &str) -> Vec<String> {
+        let node_ids = vec!["node-1".to_string(), "node-2".to_string()];
+        for nid in &node_ids {
+            conn.execute(
+                "INSERT INTO nodes (id, map_id, node_type, content, source, x, y, width, height, strength) \
+                 VALUES (?1, ?2, 'claim', 'Content', NULL, 10.0, 20.0, 220.0, 80.0, 3)",
+                params![nid, map_id],
+            )
+            .unwrap();
+        }
+        node_ids
+    }
+
+    fn insert_edge(conn: &Connection, map_id: &str, src: &str, tgt: &str) {
+        conn.execute(
+            "INSERT INTO edges (id, map_id, source_node_id, target_node_id, edge_type) \
+             VALUES ('edge-1', ?1, ?2, ?3, 'supports')",
+            params![map_id, src, tgt],
+        )
+        .unwrap();
+    }
+
+    // ─── save_map_state logic ────────────────────────────────────────────────
+
+    /// Replicates the save_map_state transaction logic for testing without Tauri State.
+    fn save_map_state_inner(
+        conn: &Connection,
+        map_id: &str,
+        nodes: &[(
+            &str,
+            &str,
+            &str,
+            Option<&str>,
+            f64,
+            f64,
+            f64,
+            f64,
+            Option<i32>,
+        )],
+        edges: &[(&str, &str, &str, &str, Option<&str>)],
+    ) -> Result<(), rusqlite::Error> {
+        let now = "2024-06-01 12:00:00";
+        conn.execute_batch("BEGIN TRANSACTION;")?;
+
+        conn.execute("DELETE FROM edges WHERE map_id = ?1", params![map_id])?;
+        conn.execute("DELETE FROM nodes WHERE map_id = ?1", params![map_id])?;
+
+        for &(id, node_type, content, source, x, y, w, h, strength) in nodes {
+            conn.execute(
+                "INSERT INTO nodes (id, map_id, node_type, content, source, x, y, width, height, strength) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                params![id, map_id, node_type, content, source, x, y, w, h, strength],
+            )?;
+        }
+
+        for &(id, src, tgt, edge_type, label) in edges {
+            conn.execute(
+                "INSERT INTO edges (id, map_id, source_node_id, target_node_id, edge_type, label) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![id, map_id, src, tgt, edge_type, label],
+            )?;
+        }
+
+        conn.execute(
+            "UPDATE maps SET updated_at = ?1 WHERE id = ?2",
+            params![now, map_id],
+        )?;
+
+        conn.execute_batch("COMMIT;")?;
+        Ok(())
+    }
+
+    #[test]
+    fn save_map_with_nodes_and_edges_roundtrip() {
+        let conn = setup_db();
+        let map_id = "map-abc";
+        insert_map(&conn, map_id);
+
+        let nodes = vec![
+            (
+                "n1",
+                "claim",
+                "Main claim",
+                None,
+                0.0,
+                0.0,
+                220.0,
+                80.0,
+                Some(5),
+            ),
+            (
+                "n2",
+                "evidence",
+                "Supporting evidence",
+                Some("https://example.com"),
+                200.0,
+                100.0,
+                220.0,
+                80.0,
+                None,
+            ),
+        ];
+        let edges = vec![("e1", "n1", "n2", "supports", Some("strong support"))];
+
+        save_map_state_inner(&conn, map_id, &nodes, &edges).unwrap();
+
+        let node_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM nodes WHERE map_id = ?1",
+                params![map_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let edge_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM edges WHERE map_id = ?1",
+                params![map_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(node_count, 2);
+        assert_eq!(edge_count, 1);
+
+        // Verify content round-trips correctly
+        let content: String = conn
+            .query_row("SELECT content FROM nodes WHERE id = 'n1'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(content, "Main claim");
+
+        let source: Option<String> = conn
+            .query_row("SELECT source FROM nodes WHERE id = 'n2'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(source.as_deref(), Some("https://example.com"));
+
+        let label: Option<String> = conn
+            .query_row("SELECT label FROM edges WHERE id = 'e1'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(label.as_deref(), Some("strong support"));
+    }
+
+    #[test]
+    fn save_empty_map_persists_map_row() {
+        let conn = setup_db();
+        let map_id = "map-empty";
+        insert_map(&conn, map_id);
+
+        save_map_state_inner(&conn, map_id, &[], &[]).unwrap();
+
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM maps WHERE id = ?1",
+                params![map_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let node_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM nodes WHERE map_id = ?1",
+                params![map_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let edge_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM edges WHERE map_id = ?1",
+                params![map_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(count, 1, "map row must survive empty save");
+        assert_eq!(node_count, 0);
+        assert_eq!(edge_count, 0);
+    }
+
+    #[test]
+    fn save_replaces_existing_nodes_and_edges() {
+        let conn = setup_db();
+        let map_id = "map-replace";
+        insert_map(&conn, map_id);
+        let node_ids = insert_nodes(&conn, map_id);
+        insert_edge(&conn, map_id, &node_ids[0], &node_ids[1]);
+
+        // Now save with entirely different nodes — old ones must be gone
+        let new_nodes = vec![(
+            "n-new",
+            "rebuttal",
+            "New rebuttal",
+            None,
+            5.0,
+            5.0,
+            220.0,
+            80.0,
+            None,
+        )];
+        save_map_state_inner(&conn, map_id, &new_nodes, &[]).unwrap();
+
+        let ids: Vec<String> = {
+            let mut stmt = conn
+                .prepare("SELECT id FROM nodes WHERE map_id = ?1")
+                .unwrap();
+            stmt.query_map(params![map_id], |r| r.get(0))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect()
+        };
+        assert_eq!(ids, vec!["n-new"]);
+
+        let edge_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM edges WHERE map_id = ?1",
+                params![map_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(edge_count, 0, "old edges must be deleted");
+    }
+
+    #[test]
+    fn save_with_nonexistent_map_id_succeeds_silently() {
+        // save_map_state does not validate map existence — UPDATE with no match is a no-op
+        let conn = setup_db();
+        let result = save_map_state_inner(&conn, "ghost-map", &[], &[]);
+        assert!(result.is_ok(), "no error expected for missing map_id");
+
+        // No map row should have been created
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM maps WHERE id = 'ghost-map'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn init_save_load_roundtrip() {
+        let conn = setup_db();
+        let map_id = "map-roundtrip";
+        insert_map(&conn, map_id);
+
+        let nodes = vec![
+            (
+                "rt-n1",
+                "claim",
+                "Claim text",
+                None,
+                0.0,
+                0.0,
+                220.0,
+                80.0,
+                Some(4),
+            ),
+            (
+                "rt-n2",
+                "evidence",
+                "Evidence text",
+                Some("source-url"),
+                300.0,
+                50.0,
+                220.0,
+                80.0,
+                None,
+            ),
+        ];
+        let edges = vec![("rt-e1", "rt-n1", "rt-n2", "supports", None)];
+        save_map_state_inner(&conn, map_id, &nodes, &edges).unwrap();
+
+        // Load nodes
+        let loaded_nodes: Vec<(String, String, f64, Option<i32>)> = {
+            let mut stmt = conn
+                .prepare("SELECT id, content, x, strength FROM nodes WHERE map_id = ?1 ORDER BY id")
+                .unwrap();
+            stmt.query_map(params![map_id], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+            })
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect()
+        };
+
+        assert_eq!(loaded_nodes.len(), 2);
+        assert_eq!(loaded_nodes[0].0, "rt-n1");
+        assert_eq!(loaded_nodes[0].1, "Claim text");
+        assert_eq!(loaded_nodes[0].2, 0.0_f64);
+        assert_eq!(loaded_nodes[0].3, Some(4));
+        assert_eq!(loaded_nodes[1].3, None);
+
+        // Load edges
+        let loaded_edges: Vec<(String, String, String)> = {
+            let mut stmt = conn
+                .prepare("SELECT id, source_node_id, target_node_id FROM edges WHERE map_id = ?1")
+                .unwrap();
+            stmt.query_map(params![map_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect()
+        };
+
+        assert_eq!(loaded_edges.len(), 1);
+        assert_eq!(loaded_edges[0].0, "rt-e1");
+        assert_eq!(loaded_edges[0].1, "rt-n1");
+        assert_eq!(loaded_edges[0].2, "rt-n2");
+    }
+}
+
 #[tauri::command]
 pub fn export_map_json(db: State<'_, DbPool>, map_id: String) -> Result<String, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
