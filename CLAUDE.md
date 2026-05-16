@@ -47,3 +47,53 @@ See IMPLEMENTATION-ROADMAP.md for full phase details and acceptance criteria.
 - Do not enable the Tauri `http` capability — this app makes zero network calls
 - Do not use class components — hooks only throughout
 - Do not build the graph canvas from scratch — React Flow provides all canvas primitives
+
+<!-- portfolio-context:start -->
+# Portfolio Context
+
+## What This Project Is
+
+A local-first macOS desktop app for building interactive argument maps — structured graphs of Claims, Evidence, Rebuttals, and Counter-Rebuttals connected by typed relationship edges. Built for personal use: technical architecture decisions, IT incident root-cause chains, and structured research synthesis. All data stays on disk; no cloud, no accounts.
+
+## Current State
+
+**Phase 0: Scaffold + Database (Days 1–2)**
+See IMPLEMENTATION-ROADMAP.md for full phase details and acceptance criteria.
+
+## Stack
+
+- **Desktop shell:** Tauri 2.0
+- **Frontend:** React 18+ (hooks only, no class components)
+- **Language:** TypeScript 5.x (strict mode)
+- **Graph canvas:** @xyflow/react 12.x — React Flow; handles node/edge rendering, pan/zoom, connection handles, NodeResizer
+- **Build tool:** Vite 5.x
+- **Styling:** Tailwind CSS 3.x (dark theme, utility classes)
+- **DB driver (Rust):** rusqlite 0.31 (bundled feature)
+- **Image export:** html-to-image 1.11
+- **Database:** SQLite at `~/.argumap/argumap.db`
+
+## How To Run
+
+```bash
+# Development
+npm run tauri dev
+
+# Build release app
+npm run tauri build
+```
+
+## Known Risks
+
+- Do not write back from SQLite into React Flow state after initial hydration — one-way sync only after load
+- Do not call `invoke()` directly in component files — all IPC goes through `src/lib/tauri.ts`
+- Do not define TypeScript interfaces outside `src/types/index.ts`
+- Do not add features not in the current phase of IMPLEMENTATION-ROADMAP.md
+- Do not enable the Tauri `http` capability — this app makes zero network calls
+- Do not use class components — hooks only throughout
+- Do not build the graph canvas from scratch — React Flow provides all canvas primitives
+
+## Next Recommended Move
+
+Use this context plus the README and supporting docs to resume the next active task, then promote the repo beyond minimum-viable by capturing a dedicated handoff, roadmap, or discovery artifact.
+
+<!-- portfolio-context:end -->
