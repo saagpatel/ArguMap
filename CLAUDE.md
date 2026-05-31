@@ -23,8 +23,8 @@ A local-first macOS desktop app for building interactive argument maps — struc
 - Auto-save only — no manual save UI, no "unsaved changes" indicator
 
 ## Current Phase
-**Phase 0: Scaffold + Database (Days 1–2)**
-See IMPLEMENTATION-ROADMAP.md for full phase details and acceptance criteria.
+**v1.0 + v2 shipped — Release Frozen**
+All implementation phases complete. v1.0: 4 node/edge types, map library, sidebar editor, PNG/JSON export, auto-save, keyboard shortcuts. v2: HTML export, strength scoring (1–5), templates (5 Whys, Pro/Con, MECE), collapse/expand subtrees. Blocked on Apple signing. See docs/PORTFOLIO-DISPOSITION.md.
 
 ## Key Decisions
 | Decision | Choice | Why |
@@ -57,8 +57,8 @@ A local-first macOS desktop app for building interactive argument maps — struc
 
 ## Current State
 
-**Phase 0: Scaffold + Database (Days 1–2)**
-See IMPLEMENTATION-ROADMAP.md for full phase details and acceptance criteria.
+**v1.0 + v2 shipped — Release Frozen**
+All phases complete. See docs/PORTFOLIO-DISPOSITION.md for full disposition.
 
 ## Stack
 
