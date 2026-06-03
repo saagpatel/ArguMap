@@ -11,98 +11,86 @@ what was fixed, and what needs a human's eye.
 
 ### 1. What it is
 
-**Status:** `drifted` → fixed  
-**Verified by reading:** `src/lib/exportUtils.ts` (HTML export implemented), `src/types/index.ts` (strength scoring), `src/lib/templates.ts` (templates), `src/hooks/useCollapse.ts` (collapse/expand)
+**Status:** `consistent`
+**Verified by reading:** `README.md`, `src/lib/exportUtils.ts` (HTML export), `src/types/index.ts`
+(strength scoring, STRENGTH_COLORS), `src/lib/templates.ts` (three templates), `src/hooks/useCollapse.ts`
+(collapse/expand), `src/hooks/useKeyboardShortcuts.ts` (Cmd+Shift+E for HTML export)
 
-The README intro said "export to PNG or JSON" — HTML export is fully implemented in code.
-
-**Changed:** `README.md` line 6  
-Before: "export to PNG or JSON"  
-After: "export to PNG, JSON, or HTML"
+README intro accurately describes the app: 4 node types, 4 edge types, PNG/JSON/HTML export,
+strength scoring, templates, collapse/expand subtrees. These were all fixed in the prior
+reconciliation pass (2026-05-30, HEAD `6da6cdd`). No further changes needed.
 
 ---
 
 ### 2. Current state
 
-**Status:** `drifted` → fixed  
-**Verified by reading:** `src/**/*.tsx`, `src-tauri/src/commands.rs`, `src-tauri/migrations/002_add_strength.sql`, `git log` (commits `f6f2e29` v1.0, `911a752` v2, `c1bd868` strength scoring)
+**Status:** `consistent`
+**Verified by reading:** `CLAUDE.md` `## Status` section, `<!-- portfolio-context:start -->` block,
+`docs/PORTFOLIO-DISPOSITION.md`, full source tree, `src-tauri/migrations/002_add_strength.sql`
 
-Both `CLAUDE.md` sections claimed the project was at "Phase 0: Scaffold + Database (Days 1–2)".
-The code is a fully shipped v1+v2 app. All 4 node types, 4 edge types, map library, sidebar editor,
-PNG/JSON/HTML export, strength scoring (1–5), templates (5 Whys / Pro/Con / MECE),
-collapse/expand subtrees, auto-save, keyboard shortcuts — all implemented and committed.
-
-**Changed:** `CLAUDE.md` — `## Current Phase` section  
-Before: "Phase 0: Scaffold + Database (Days 1–2)"  
-After: "v1.0 + v2 shipped — Release Frozen / All implementation phases complete..."
-
-**Changed:** `CLAUDE.md` — embedded `<!-- portfolio-context:start -->` block, `## Current State`  
-Before: "Phase 0: Scaffold + Database (Days 1–2)"  
-After: "v1.0 + v2 shipped — Release Frozen / All phases complete..."
+CLAUDE.md correctly states "v1.0 + v2 shipped — release frozen" in both its main body and the
+embedded portfolio-context block. All features are implemented in code. No changes needed.
 
 ---
 
 ### 3. Stack
 
-**Status:** `drifted` → fixed  
-**Verified by reading:** `package.json` (no `@tauri-apps/plugin-sql`), `src-tauri/src/commands.rs` (imports `crate::db::DbPool` / `rusqlite`), `CLAUDE.md` stack table (already correctly says "rusqlite 0.31")
+**Status:** `drifted` → fixed
+**Verified by reading:** `package.json` (`"vite": "^6.0.3"`), `CLAUDE.md` stack section
+(said "Vite 5.x"), `CLAUDE.md` portfolio-context stack section (also said "Vite 5.x")
 
-README tech stack table listed "SQLite via Tauri SQL plugin" — the code uses `rusqlite` directly
-(bundled feature), not `tauri-plugin-sql`. CLAUDE.md already had the correct entry; the README
-was inconsistent with it.
+The build tool version was wrong in two places. The installed Vite is 6.x, not 5.x.
 
-**Changed:** `README.md` tech stack table  
-Before: `| Persistence | SQLite via Tauri SQL plugin |`  
-After: `| Persistence | SQLite via rusqlite (bundled) |`
+**Changed:** `CLAUDE.md` — `## Stack` section, Build tool line
+Before: `- **Build tool:** Vite 5.x`
+After: `- **Build tool:** Vite 6.x`
+
+**Changed:** `CLAUDE.md` — `<!-- portfolio-context:start -->` `## Stack` section, Build tool line
+Before: `- **Build tool:** Vite 5.x`
+After: `- **Build tool:** Vite 6.x`
 
 ---
 
 ### 4. How to run
 
-**Status:** `consistent`  
-**Verified by reading:** `package.json` (scripts: `tauri` → `tauri`; `build` → `tsc && vite build`), `package-lock.json` present (npm, not pnpm)
+**Status:** `drifted` in `docs/PORTFOLIO-DISPOSITION.md` → fixed
+**Verified by reading:** `package-lock.json` (exists; confirms npm), `package.json` scripts,
+`src-tauri/tauri.conf.json` (`"beforeDevCommand": "npm run dev"`, `"beforeBuildCommand": "npm run build"`),
+`README.md` (already correctly uses `npm install` / `npm run tauri dev`)
 
-README documents `npm install`, `npm run tauri dev`, `npm run tauri build` — all three scripts
-exist in `package.json`. Package manager is npm (confirmed by `package-lock.json`). No changes needed.
+The reactivation procedure in `docs/PORTFOLIO-DISPOSITION.md` referenced `pnpm` but the project
+uses npm throughout. `pnpm-lock.yaml` does not exist; `package-lock.json` does.
+
+**Changed:** `docs/PORTFOLIO-DISPOSITION.md` — tree listing line
+Before: `- \`index.html\`, \`package.json\`, \`pnpm-lock.yaml\` (project root)`
+After: `- \`index.html\`, \`package.json\`, \`package-lock.json\` (project root)`
+
+**Changed:** `docs/PORTFOLIO-DISPOSITION.md` — reactivation procedure step 4
+Before: `4. Re-run \`pnpm install && pnpm tauri build\` to confirm toolchain.`
+After: `4. Re-run \`npm install && npm run tauri build\` to confirm toolchain.`
 
 ---
 
-### 5. Known risks / Do NOT rules
+### 5. Known risks
 
-**Status:** `consistent`  
-**Verified by reading:** `CLAUDE.md` "Do NOT" section, `tauri.conf.json` (not directly checked; no capability drift surfaced in code)
+**Status:** `consistent`
+**Verified by reading:** `CLAUDE.md` `## Gotchas` section, `src/lib/tauri.ts` (all IPC goes here),
+`src/hooks/useMapSync.ts` (isHydrating guard — one-way sync), `src-tauri/tauri.conf.json`
+(no `http` capability)
 
-The architectural guardrails in CLAUDE.md ("Do NOT write back from SQLite", "Do NOT call invoke()
-directly", etc.) remain accurate constraints — all enforced in the code (IPC goes through
-`src/lib/tauri.ts`, SQLite sync is one-way via `useMapSync.ts`). No changes needed.
+Architectural guardrails in CLAUDE.md Gotchas accurately reflect code patterns. No changes needed.
 
 ---
 
 ### 6. Next move
 
-**Status:** `drifted` → fixed (via Current Phase update above)  
-**Verified by reading:** `git log`, `docs/PORTFOLIO-DISPOSITION.md`, full source tree
+**Status:** `consistent`
+**Verified by reading:** `CLAUDE.md` `## Status` section, `docs/PORTFOLIO-DISPOSITION.md`
+(unblock trigger, operator instructions)
 
-The "Current Phase = Phase 0" claim implied the next move was scaffolding the app. The actual
-next move is Apple signing + Android posture decision, per `docs/PORTFOLIO-DISPOSITION.md`. Fixed
-as part of claim 2 above — CLAUDE.md now points to the disposition doc.
-
----
-
-### v2 features missing from README
-
-**Status:** `drifted` → fixed  
-**Verified by reading:** `src/lib/exportUtils.ts` (`exportAsHtml`), `src/types/index.ts` (`STRENGTH_COLORS`, `strength` field), `src/lib/templates.ts` (three templates), `src/hooks/useCollapse.ts`, `src/hooks/useKeyboardShortcuts.ts` (`Cmd+Shift+E`)
-
-README features list and keyboard shortcuts were written before or without including v2 features
-(git commit `f0621fe` introduced the README after `911a752` v2 merge, but omitted them).
-
-**Changed:** `README.md` features section  
-Added: HTML export bullet, strength scoring bullet, templates bullet, collapse/expand bullet
-
-**Changed:** `README.md` keyboard shortcuts bullet  
-Before: "...`Cmd+E` to export PNG"  
-After: "...`Cmd+E` to export PNG, `Cmd+Shift+E` to export HTML"
+CLAUDE.md points to `docs/PORTFOLIO-DISPOSITION.md` for the disposition, which accurately
+describes the next move: Apple Developer ID + notarization, Android posture decision, SQLite
+migration audit, release tag. No changes needed.
 
 ---
 
@@ -111,26 +99,25 @@ After: "...`Cmd+E` to export PNG, `Cmd+Shift+E` to export HTML"
 ### CHANGELOG.md
 
 `CHANGELOG.md:9` — Lists only "Initial release" under `[Unreleased]` with no version entries.
-The repo has v1.0.0 (`f6f2e29`) and v2 (`911a752`, `c1bd868`) both shipped.
+Both v1.0 (`f6f2e29`) and v2 (`911a752`, `c1bd868`) are shipped. This was flagged in the
+2026-05-30 pass and remains unfixed.
 
-Fix: Add a `## [1.0.0]` section documenting v1 features and a `## [2.0.0]` (or `## [1.1.0]`)
-section documenting: collapse/expand subtrees, templates (5 Whys/Pro/Con/MECE), HTML export,
+Fix: Add `## [1.0.0]` section for v1 features and `## [2.0.0]` (or `## [1.1.0]`) for v2
+additions: collapse/expand subtrees, templates (5 Whys / Pro/Con / MECE), HTML export,
 strength scoring (1–5 per node).
 
 ### IMPLEMENTATION-ROADMAP.md
 
-All Definition of Done checkboxes at the bottom of the file (lines 580–592) are unchecked `[ ]`
-despite all items being complete in code. The roadmap is a design/spec doc, not a status tracker,
-so the unchecked boxes are accurate to the document's original purpose — but they read as "not done"
-to a newcomer.
+`IMPLEMENTATION-ROADMAP.md:580–592` — Definition of Done checkboxes all unchecked `[ ]` despite
+all items being complete in code. This was flagged in the 2026-05-30 pass and remains unfixed.
 
-No line-level fix required unless the operator wants to convert this to a post-ship record. If so,
-mark all items in the "Definition of Done" section as `[x]`.
+Fix (if desired): mark all items `[x]` to convert the section into a post-ship record. Leave
+unchanged if treating the file as a design/spec artifact rather than a status tracker.
 
 ---
 
 ## Footer
 
-Generated: 2026-05-30 22:26:59 PDT  
-Branch: `docs/truth-up-2026-05-30`  
-HEAD reconciled against: `6da6cdd77d2172203f4b275aa33c0bc6f4da262b`
+Generated: 2026-06-02 19:39:22 PDT
+Branch: `docs/truth-up-2026-06-02`
+HEAD reconciled against: `5c2446c704097db22b1309f402f8eb2211c1ceb7`

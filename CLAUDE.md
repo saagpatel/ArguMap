@@ -8,7 +8,7 @@ Local-first macOS desktop app for interactive argument maps — Claims, Evidence
 - **Frontend:** React 18+ hooks only
 - **Language:** TypeScript 5.x strict mode
 - **Graph canvas:** @xyflow/react 12.x — React Flow (node/edge rendering, pan/zoom, NodeResizer)
-- **Build tool:** Vite 5.x
+- **Build tool:** Vite 6.x
 - **Styling:** Tailwind CSS 3.x dark theme
 - **DB driver (Rust):** rusqlite 0.31 (bundled feature)
 - **Image export:** html-to-image 1.11
@@ -77,7 +77,7 @@ All phases complete. See docs/PORTFOLIO-DISPOSITION.md for full disposition.
 - **Frontend:** React 18+ (hooks only, no class components)
 - **Language:** TypeScript 5.x (strict mode)
 - **Graph canvas:** @xyflow/react 12.x — React Flow; handles node/edge rendering, pan/zoom, connection handles, NodeResizer
-- **Build tool:** Vite 5.x
+- **Build tool:** Vite 6.x
 - **Styling:** Tailwind CSS 3.x (dark theme, utility classes)
 - **DB driver (Rust):** rusqlite 0.31 (bundled feature)
 - **Image export:** html-to-image 1.11
