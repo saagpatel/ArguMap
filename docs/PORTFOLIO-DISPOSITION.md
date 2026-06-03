@@ -29,7 +29,7 @@ Specifically verified on `origin/main`:
 - Tree on `origin/main` is a full Tauri 2 desktop app:
   - `src-tauri/` (Rust backend)
   - `src/` (React + xyflow frontend)
-  - `index.html`, `package.json`, `pnpm-lock.yaml` (project root)
+  - `index.html`, `package.json`, `package-lock.json` (project root)
   - `IMPLEMENTATION-ROADMAP.md`
 - **Cross-platform packaging signals:** macOS `Square*Logo.png` +
   Android `mipmap-*/ic_launcher*.png` variants — Tauri mobile
@@ -136,7 +136,7 @@ signing round so the operator can plan.
 2. Review the local stash (`r10-argumap-stash` if created) for any
    uncommitted work.
 3. Delete stale `codex/*` branches.
-4. Re-run `pnpm install && pnpm tauri build` to confirm toolchain.
+4. Re-run `npm install && npm run tauri build` to confirm toolchain.
 5. **Decide Android posture before signing round.**
 
 ---
