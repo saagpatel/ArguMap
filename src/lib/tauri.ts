@@ -39,4 +39,12 @@ export const tauriApi = {
 
 	exportCanonicalResearchPackage: (raw: string, mapId: string) =>
 		invoke<string>("export_canonical_research_package", { raw, mapId }),
+
+	loadPersistedResearchPackage: (mapId: string) =>
+		invoke<ResearchProjection | null>("load_persisted_research_package", {
+			mapId,
+		}),
+
+	exportPersistedCanonicalResearchPackage: (mapId: string) =>
+		invoke<string>("export_persisted_canonical_research_package", { mapId }),
 };

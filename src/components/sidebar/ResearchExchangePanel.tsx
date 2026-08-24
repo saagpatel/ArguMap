@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { tauriApi } from "../../lib/tauri";
 import type { ResearchProjection } from "../../types";
 
@@ -27,6 +27,35 @@ export default function ResearchExchangePanel({
 	const [projection, setProjection] = useState<ResearchProjection | null>(null);
 	const [error, setError] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [persisted, setPersisted] = useState(false);
+
+	useEffect(() => {
+		let active = true;
+		setProjection(null);
+		setPersisted(false);
+		setRaw("");
+		setError("");
+		if (!mapId)
+			return () => {
+				active = false;
+			};
+		void (async () => {
+			try {
+				const retained = await tauriApi.loadPersistedResearchPackage(mapId);
+				if (!active || !retained) return;
+				const canonical = await tauriApi.exportPersistedCanonicalResearchPackage(mapId);
+				if (!active) return;
+				setProjection(retained);
+				setRaw(canonical);
+				setPersisted(true);
+			} catch (reason) {
+				if (active) setError(reason instanceof Error ? reason.message : String(reason));
+			}
+		})();
+		return () => {
+			active = false;
+		};
+	}, [mapId]);
 
 	const run = async (mode: "inspect" | "import") => {
 		if (!mapId) return;
@@ -38,6 +67,7 @@ export default function ResearchExchangePanel({
 					? await tauriApi.inspectResearchPackage(raw, mapId)
 					: await tauriApi.importResearchPackageIntoMap(raw, mapId);
 			setProjection(result);
+			setPersisted(mode === "import");
 			if (mode === "import") onImported();
 		} catch (reason) {
 			setProjection(null);
@@ -73,6 +103,7 @@ export default function ResearchExchangePanel({
 							}
 							setRaw(await file.text());
 							setProjection(null);
+							setPersisted(false);
 							setError("");
 						}}
 					/>
@@ -85,6 +116,7 @@ export default function ResearchExchangePanel({
 						onChange={(event) => {
 							setRaw(event.target.value);
 							setProjection(null);
+							setPersisted(false);
 						}}
 						placeholder='{"schema_version":"evidence-centered.research-package.v2", ...}'
 						spellCheck={false}
@@ -122,10 +154,9 @@ export default function ResearchExchangePanel({
 							onClick={async () => {
 								if (!mapId) return;
 								try {
-									const canonical = await tauriApi.exportCanonicalResearchPackage(
-										raw,
-										mapId,
-									);
+									const canonical = persisted
+										? await tauriApi.exportPersistedCanonicalResearchPackage(mapId)
+										: await tauriApi.exportCanonicalResearchPackage(raw, mapId);
 									downloadCanonical(canonical, projection);
 								} catch (reason) {
 									setError(reason instanceof Error ? reason.message : String(reason));
