@@ -41,6 +41,9 @@ pub fn init_db() -> Result<DbPool, String> {
             .map_err(|e| format!("Failed to run migration 2: {e}"))?;
     }
 
+    conn.execute_batch(include_str!("../migrations/003_research_packages.sql"))
+        .map_err(|e| format!("Failed to run migration 3: {e}"))?;
+
     Ok(Mutex::new(conn))
 }
 
@@ -48,13 +51,15 @@ pub fn init_db() -> Result<DbPool, String> {
 mod tests {
     use rusqlite::Connection;
 
-    /// Run both migrations on a fresh in-memory connection, matching init_db() logic.
+    /// Run all migrations on a fresh in-memory connection, matching init_db() logic.
     fn apply_migrations(conn: &Connection) {
         conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
         conn.execute_batch(include_str!("../migrations/001_initial.sql"))
             .unwrap();
         // On a fresh in-memory db the strength column never exists, so always run migration 2.
         conn.execute_batch(include_str!("../migrations/002_add_strength.sql"))
+            .unwrap();
+        conn.execute_batch(include_str!("../migrations/003_research_packages.sql"))
             .unwrap();
     }
 
@@ -83,13 +88,17 @@ mod tests {
     }
 
     #[test]
-    fn init_creates_all_three_tables() {
+    fn init_creates_all_tables() {
         let conn = Connection::open_in_memory().unwrap();
         apply_migrations(&conn);
 
         assert!(table_exists(&conn, "maps"), "maps table must exist");
         assert!(table_exists(&conn, "nodes"), "nodes table must exist");
         assert!(table_exists(&conn, "edges"), "edges table must exist");
+        assert!(
+            table_exists(&conn, "research_packages"),
+            "research package retention table must exist"
+        );
     }
 
     #[test]

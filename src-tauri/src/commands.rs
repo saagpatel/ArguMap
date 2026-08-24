@@ -1,6 +1,9 @@
 use crate::db::DbPool;
 use crate::models::{ArgEdge, ArgNode, EdgePayload, Map, NodePayload};
-use rusqlite::params;
+use crate::research_adapter::{
+    export_research_package, import_research_package, ResearchProjection,
+};
+use rusqlite::{params, Connection};
 use tauri::State;
 
 #[tauri::command]
@@ -188,8 +191,154 @@ pub fn save_map_state(
     Ok(())
 }
 
+#[tauri::command]
+pub fn inspect_research_package(raw: String, map_id: String) -> Result<ResearchProjection, String> {
+    import_research_package(&raw, &map_id)
+}
+
+#[tauri::command]
+pub fn export_canonical_research_package(raw: String, map_id: String) -> Result<String, String> {
+    let projection = import_research_package(&raw, &map_id)?;
+    export_research_package(&projection)
+}
+
+#[tauri::command]
+pub fn import_research_package_into_map(
+    db: State<'_, DbPool>,
+    raw: String,
+    map_id: String,
+) -> Result<ResearchProjection, String> {
+    let projection = import_research_package(&raw, &map_id)?;
+    let conn = db.lock().map_err(|error| error.to_string())?;
+    persist_research_projection(&conn, &map_id, &projection)?;
+    Ok(projection)
+}
+
+#[tauri::command]
+pub fn load_persisted_research_package(
+    db: State<'_, DbPool>,
+    map_id: String,
+) -> Result<Option<ResearchProjection>, String> {
+    let conn = db.lock().map_err(|error| error.to_string())?;
+    load_persisted_research_projection(&conn, &map_id)
+}
+
+#[tauri::command]
+pub fn export_persisted_canonical_research_package(
+    db: State<'_, DbPool>,
+    map_id: String,
+) -> Result<String, String> {
+    let conn = db.lock().map_err(|error| error.to_string())?;
+    conn.query_row(
+        "SELECT canonical_package FROM research_packages WHERE map_id = ?1",
+        params![map_id],
+        |row| row.get(0),
+    )
+    .map_err(|error| error.to_string())
+}
+
+fn persist_research_projection(
+    conn: &Connection,
+    map_id: &str,
+    projection: &ResearchProjection,
+) -> Result<(), String> {
+    let map_exists: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM maps WHERE id = ?1",
+            params![map_id],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    if map_exists != 1 {
+        return Err("research package target map does not exist".into());
+    }
+
+    conn.execute_batch("BEGIN TRANSACTION;")
+        .map_err(|error| error.to_string())?;
+    let result = (|| -> Result<(), rusqlite::Error> {
+        conn.execute("DELETE FROM edges WHERE map_id = ?1", params![map_id])?;
+        conn.execute("DELETE FROM nodes WHERE map_id = ?1", params![map_id])?;
+        for node in &projection.nodes {
+            conn.execute(
+                "INSERT INTO nodes (id, map_id, node_type, content, source, x, y, width, height, strength) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                params![node.id, map_id, node.node_type, node.content, node.source, node.x, node.y, node.width, node.height, node.strength],
+            )?;
+        }
+        for edge in &projection.edges {
+            conn.execute(
+                "INSERT INTO edges (id, map_id, source_node_id, target_node_id, edge_type, label) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![edge.id, map_id, edge.source_node_id, edge.target_node_id, edge.edge_type, edge.label],
+            )?;
+        }
+        let canonical_package = serde_json::to_string(&projection.canonical_package)
+            .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
+        let adapter_losses = serde_json::to_string(&projection.losses)
+            .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
+        conn.execute(
+            "INSERT INTO research_packages
+                (map_id, schema_version, package_id, revision_id, canonical_package, adapter_losses, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP)
+             ON CONFLICT(map_id) DO UPDATE SET
+                schema_version = excluded.schema_version,
+                package_id = excluded.package_id,
+                revision_id = excluded.revision_id,
+                canonical_package = excluded.canonical_package,
+                adapter_losses = excluded.adapter_losses,
+                updated_at = CURRENT_TIMESTAMP",
+            params![
+                map_id,
+                projection.schema_version,
+                projection.package_id,
+                projection.revision_id,
+                canonical_package,
+                adapter_losses,
+            ],
+        )?;
+        let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        conn.execute(
+            "UPDATE maps SET updated_at = ?1 WHERE id = ?2",
+            params![now, map_id],
+        )?;
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => conn
+            .execute_batch("COMMIT;")
+            .map_err(|error| error.to_string()),
+        Err(error) => {
+            let _ = conn.execute_batch("ROLLBACK;");
+            Err(error.to_string())
+        }
+    }
+}
+
+fn load_persisted_research_projection(
+    conn: &Connection,
+    map_id: &str,
+) -> Result<Option<ResearchProjection>, String> {
+    let stored = conn.query_row(
+        "SELECT canonical_package, adapter_losses FROM research_packages WHERE map_id = ?1",
+        params![map_id],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    );
+    let (canonical_package, adapter_losses) = match stored {
+        Ok(value) => value,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(error) => return Err(error.to_string()),
+    };
+    let mut projection = import_research_package(&canonical_package, map_id)?;
+    projection.losses = serde_json::from_str(&adapter_losses)
+        .map_err(|error| format!("persisted research losses are invalid: {error}"))?;
+    Ok(Some(projection))
+}
+
 #[cfg(test)]
 mod tests {
+    use super::{
+        export_canonical_research_package, inspect_research_package,
+        load_persisted_research_projection, persist_research_projection,
+    };
     use rusqlite::{params, Connection};
 
     /// Run both migrations on an in-memory connection, mirroring what init_db() does.
@@ -200,6 +349,8 @@ mod tests {
             .unwrap();
         // migration 2 is always needed on a fresh in-memory db
         conn.execute_batch(include_str!("../migrations/002_add_strength.sql"))
+            .unwrap();
+        conn.execute_batch(include_str!("../migrations/003_research_packages.sql"))
             .unwrap();
         conn
     }
@@ -519,6 +670,70 @@ mod tests {
         assert_eq!(loaded_edges[0].0, "rt-e1");
         assert_eq!(loaded_edges[0].1, "rt-n1");
         assert_eq!(loaded_edges[0].2, "rt-n2");
+    }
+
+    #[test]
+    fn research_package_import_persists_projection_and_preserves_losses() {
+        const FIXTURE: &str =
+            include_str!("../../fixtures/evidence-centered-research/qualified-package-v4.json");
+        let conn = setup_db();
+        let map_id = "map-research";
+        insert_map(&conn, map_id);
+        let projection =
+            inspect_research_package(FIXTURE.into(), map_id.into()).expect("inspect package");
+        persist_research_projection(&conn, map_id, &projection).expect("persist projection");
+
+        let node_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM nodes WHERE map_id = ?1",
+                params![map_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let edge_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM edges WHERE map_id = ?1",
+                params![map_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(node_count as usize, projection.nodes.len());
+        assert_eq!(edge_count as usize, projection.edges.len());
+        assert!(projection
+            .losses
+            .iter()
+            .any(|loss| loss.path.contains("lifecycle_attestation")));
+
+        let exported = export_canonical_research_package(FIXTURE.into(), map_id.into())
+            .expect("export canonical package");
+        let original: serde_json::Value = serde_json::from_str(FIXTURE).unwrap();
+        let round_trip: serde_json::Value = serde_json::from_str(&exported).unwrap();
+        assert_eq!(original, round_trip);
+
+        let reloaded = load_persisted_research_projection(&conn, map_id)
+            .expect("load persisted exchange")
+            .expect("persisted exchange exists");
+        assert_eq!(reloaded.canonical_package, original);
+        assert_eq!(reloaded.losses, projection.losses);
+    }
+
+    #[test]
+    fn identical_package_ids_persist_in_distinct_maps_without_global_id_collision() {
+        const FIXTURE: &str =
+            include_str!("../../fixtures/evidence-centered-research/qualified-package-v4.json");
+        let conn = setup_db();
+        for map_id in ["map-first", "map-second"] {
+            insert_map(&conn, map_id);
+            let projection =
+                inspect_research_package(FIXTURE.into(), map_id.into()).expect("inspect fixture");
+            persist_research_projection(&conn, map_id, &projection).expect("persist projection");
+        }
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM research_packages", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(count, 2);
     }
 }
 
