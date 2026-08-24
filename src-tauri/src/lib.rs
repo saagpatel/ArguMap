@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod models;
+pub mod research_adapter;
 
 use commands::{
     create_map, delete_map, export_map_json, get_maps, load_map, rename_map, save_map_state,
