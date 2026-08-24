@@ -7,6 +7,7 @@ export function useMapLoader(
 	mapId: string | null,
 	isHydrating: React.MutableRefObject<boolean>,
 	onUpdate: ArgNodeData["onUpdate"],
+	reloadToken = 0,
 ) {
 	const { setNodes, setEdges } = useReactFlow<ArgFlowNode, ArgFlowEdge>();
 
@@ -70,6 +71,6 @@ export function useMapLoader(
 		return () => {
 			cancelled = true;
 		};
-	}, [mapId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [mapId, reloadToken]); // eslint-disable-line react-hooks/exhaustive-deps
 	// onUpdate is stable (ref-based), setNodes/setEdges are stable from useReactFlow
 }

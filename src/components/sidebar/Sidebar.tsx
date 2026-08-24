@@ -3,6 +3,7 @@ import type { ArgFlowNode, ArgMap, ArgNodeData, NodeType } from "../../types";
 import AddNodePanel from "./AddNodePanel";
 import MapLibrary from "./MapLibrary";
 import NodeEditor from "./NodeEditor";
+import ResearchExchangePanel from "./ResearchExchangePanel";
 
 interface SidebarProps {
 	maps: ArgMap[];
@@ -15,6 +16,7 @@ interface SidebarProps {
 	onAddNode: (type: NodeType) => void;
 	selectedNode: ArgFlowNode | null;
 	onUpdateNode: ArgNodeData["onUpdate"];
+	onResearchImported: () => void;
 }
 
 export default function Sidebar({
@@ -28,6 +30,7 @@ export default function Sidebar({
 	onAddNode,
 	selectedNode,
 	onUpdateNode,
+	onResearchImported,
 }: SidebarProps) {
 	return (
 		<div className="flex h-full flex-col">
@@ -48,6 +51,12 @@ export default function Sidebar({
 				) : (
 					<AddNodePanel onAddNode={onAddNode} />
 				)}
+			</div>
+			<div className="p-3 pt-0">
+				<ResearchExchangePanel
+					mapId={activeMapId}
+					onImported={onResearchImported}
+				/>
 			</div>
 		</div>
 	);

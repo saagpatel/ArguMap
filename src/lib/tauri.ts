@@ -5,6 +5,7 @@ import type {
 	ArgNode,
 	EdgePayload,
 	NodePayload,
+	ResearchProjection,
 } from "../types";
 
 export const tauriApi = {
@@ -26,4 +27,16 @@ export const tauriApi = {
 
 	exportMapJson: (mapId: string) =>
 		invoke<string>("export_map_json", { mapId }),
+
+	inspectResearchPackage: (raw: string, mapId: string) =>
+		invoke<ResearchProjection>("inspect_research_package", { raw, mapId }),
+
+	importResearchPackageIntoMap: (raw: string, mapId: string) =>
+		invoke<ResearchProjection>("import_research_package_into_map", {
+			raw,
+			mapId,
+		}),
+
+	exportCanonicalResearchPackage: (raw: string, mapId: string) =>
+		invoke<string>("export_canonical_research_package", { raw, mapId }),
 };

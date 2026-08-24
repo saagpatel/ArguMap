@@ -5,9 +5,12 @@ use serde_json::Value;
 
 use crate::models::{ArgEdge, ArgNode};
 
-pub const CONTRACT_SCHEMA_VERSION: &str = "evidence-centered.research-package.v1";
-pub const CONTRACT_SCHEMA_SHA256: &str =
+pub const CONTRACT_SCHEMA_VERSION_V1: &str = "evidence-centered.research-package.v1";
+pub const CONTRACT_SCHEMA_SHA256_V1: &str =
     "sha256:ab1702392cdd3c3b0d465f52de5114d5f4aad8e1e47730c10fca53fc7622360c";
+pub const CONTRACT_SCHEMA_VERSION_V2: &str = "evidence-centered.research-package.v2";
+pub const CONTRACT_SCHEMA_SHA256_V2: &str =
+    "sha256:4cff2030f2ccfb64937d8db5453f16510b30bc1db48a882d161a8b6944ae3ceb";
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct AdapterLoss {
@@ -18,6 +21,7 @@ pub struct AdapterLoss {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ResearchProjection {
+    pub schema_version: String,
     pub package_id: String,
     pub revision_id: String,
     pub schema_digest: String,
@@ -32,6 +36,7 @@ pub fn import_research_package(raw: &str, map_id: &str) -> Result<ResearchProjec
     validate_package(&package)?;
     let package_id = text(&package, "package_id")?.to_string();
     let revision_id = text(&package, "revision_id")?.to_string();
+    let schema_version = text(&package, "schema_version")?.to_string();
     let sources = index(array(&package, "sources")?, "source_id")?;
     let evidence = index(array(&package, "evidence")?, "evidence_id")?;
     let mut nodes = Vec::new();
@@ -118,6 +123,16 @@ pub fn import_research_package(raw: &str, map_id: &str) -> Result<ResearchProjec
             reason: "research method semantics have no native ArguMap node type".into(),
             retained_in_canonical_package: true,
         });
+        if schema_version == CONTRACT_SCHEMA_VERSION_V2 {
+            losses.push(AdapterLoss {
+                path: format!(
+                    "methods/{}/population_binding",
+                    text(method, "method_id")?
+                ),
+                reason: "estimand, population, sampling-frame, and missingness semantics have no native ArguMap node type".into(),
+                retained_in_canonical_package: true,
+            });
+        }
     }
     for conclusion in array(&package, "conclusions")? {
         losses.push(AdapterLoss {
@@ -126,11 +141,28 @@ pub fn import_research_package(raw: &str, map_id: &str) -> Result<ResearchProjec
             retained_in_canonical_package: true,
         });
     }
+    if schema_version == CONTRACT_SCHEMA_VERSION_V2 {
+        for source in array(&package, "sources")? {
+            losses.push(AdapterLoss {
+                path: format!(
+                    "sources/{}/lifecycle_attestation",
+                    text(source, "source_id")?
+                ),
+                reason: "signed lifecycle and authority-trust semantics are retained but have no native ArguMap node type; ArguMap does not promote embedded trust declarations".into(),
+                retained_in_canonical_package: true,
+            });
+        }
+    }
 
     Ok(ResearchProjection {
+        schema_version: schema_version.clone(),
         package_id,
         revision_id,
-        schema_digest: CONTRACT_SCHEMA_SHA256.into(),
+        schema_digest: match schema_version.as_str() {
+            CONTRACT_SCHEMA_VERSION_V1 => CONTRACT_SCHEMA_SHA256_V1.into(),
+            CONTRACT_SCHEMA_VERSION_V2 => CONTRACT_SCHEMA_SHA256_V2.into(),
+            _ => return Err("unsupported evidence-centered research schema".into()),
+        },
         canonical_package: package,
         nodes,
         edges,
@@ -144,7 +176,11 @@ pub fn export_research_package(projection: &ResearchProjection) -> Result<String
 }
 
 fn validate_package(package: &Value) -> Result<(), String> {
-    if text(package, "schema_version")? != CONTRACT_SCHEMA_VERSION {
+    let schema_version = text(package, "schema_version")?;
+    if !matches!(
+        schema_version,
+        CONTRACT_SCHEMA_VERSION_V1 | CONTRACT_SCHEMA_VERSION_V2
+    ) {
         return Err("unsupported evidence-centered research schema".into());
     }
     if !matches!(text(package, "privacy_tier")?, "P0" | "P1") {
@@ -192,6 +228,63 @@ fn validate_package(package: &Value) -> Result<(), String> {
                 return Err(format!(
                     "claim {} has unknown evidence",
                     text(claim, "claim_id")?
+                ));
+            }
+        }
+    }
+    if schema_version == CONTRACT_SCHEMA_VERSION_V2 {
+        let authorities = index(array(package, "lifecycle_authorities")?, "authority_id")?;
+        let attestations = index(array(package, "lifecycle_attestations")?, "attestation_id")?;
+        let mut referenced = BTreeSet::new();
+        for (source_id, source) in &sources {
+            let attestation_ref = text(source, "lifecycle_attestation_ref")?;
+            let attestation = attestations
+                .get(attestation_ref)
+                .ok_or_else(|| format!("source {source_id} has unknown lifecycle attestation"))?;
+            if text(attestation, "source_ref")? != source_id
+                || text(attestation, "asserted_state")? != text(source, "state")?
+                || text(attestation, "asserted_freshness")? != text(source, "freshness")?
+                || text(attestation, "version_id")? != text(source, "version_id")?
+                || text(attestation, "content_digest")? != text(source, "content_digest")?
+            {
+                return Err(format!(
+                    "attestation {attestation_ref} does not bind source state"
+                ));
+            }
+            if !authorities.contains_key(text(attestation, "authority_ref")?) {
+                return Err(format!(
+                    "attestation {attestation_ref} has unknown authority"
+                ));
+            }
+            referenced.insert(attestation_ref.to_string());
+        }
+        if referenced != attestations.keys().cloned().collect() {
+            return Err("every lifecycle attestation must bind exactly one source".into());
+        }
+        for (method_id, method) in &methods {
+            let population = method
+                .get("population_binding")
+                .ok_or_else(|| format!("method {method_id} lacks population binding"))?;
+            let mut missing: BTreeSet<String> = [
+                "estimand",
+                "target_population",
+                "analysis_population",
+                "sampling_frame",
+                "sampling_method",
+            ]
+            .into_iter()
+            .filter(|field| population.get(*field).is_none_or(Value::is_null))
+            .map(str::to_string)
+            .collect();
+            if text(population, "missingness_mechanism")? == "unknown" {
+                missing.insert("missingness_mechanism".into());
+            }
+            let declared: BTreeSet<String> = strings(array(population, "unknown_fields")?)?
+                .into_iter()
+                .collect();
+            if missing != declared {
+                return Err(format!(
+                    "method {method_id} population unknown_fields do not match missing fields"
                 ));
             }
         }
@@ -259,6 +352,8 @@ mod tests {
 
     const FIXTURE: &str =
         include_str!("../../fixtures/evidence-centered-research/qualified-package-v2.json");
+    const FIXTURE_V3: &str =
+        include_str!("../../fixtures/evidence-centered-research/qualified-package-v3.json");
 
     #[test]
     fn shared_package_round_trips_without_loss() {
@@ -292,5 +387,31 @@ mod tests {
             .losses
             .iter()
             .any(|loss| loss.path == "conclusions/conclusion-unsupported"));
+    }
+
+    #[test]
+    fn v2_package_round_trips_with_explicit_lifecycle_and_population_loss() {
+        let projection =
+            import_research_package(FIXTURE_V3, "map-ecrp-v3").expect("import package v2 fixture");
+        assert_eq!(projection.schema_version, CONTRACT_SCHEMA_VERSION_V2);
+        assert_eq!(projection.schema_digest, CONTRACT_SCHEMA_SHA256_V2);
+        let original: Value = serde_json::from_str(FIXTURE_V3).expect("parse fixture");
+        let exported: Value = serde_json::from_str(
+            &export_research_package(&projection).expect("export package v2 fixture"),
+        )
+        .expect("parse export");
+        assert_eq!(canonicalize(&original), canonicalize(&exported));
+        assert!(projection
+            .losses
+            .iter()
+            .any(|loss| loss.path == "sources/source-unknown-authority/lifecycle_attestation"));
+        assert!(projection
+            .losses
+            .iter()
+            .any(|loss| loss.path == "methods/method-observation/population_binding"));
+        assert!(projection
+            .losses
+            .iter()
+            .all(|loss| loss.retained_in_canonical_package));
     }
 }

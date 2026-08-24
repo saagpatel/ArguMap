@@ -4,7 +4,9 @@ mod models;
 pub mod research_adapter;
 
 use commands::{
-    create_map, delete_map, export_map_json, get_maps, load_map, rename_map, save_map_state,
+    create_map, delete_map, export_canonical_research_package, export_map_json, get_maps,
+    import_research_package_into_map, inspect_research_package, load_map, rename_map,
+    save_map_state,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +24,9 @@ pub fn run() {
             load_map,
             save_map_state,
             export_map_json,
+            inspect_research_package,
+            export_canonical_research_package,
+            import_research_package_into_map,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

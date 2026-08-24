@@ -65,6 +65,7 @@ export default function ArgCanvas({
 		null,
 	);
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+	const [researchReloadToken, setResearchReloadToken] = useState(0);
 
 	const { screenToFlowPosition, fitView, getNodes, getEdges } = useReactFlow<
 		ArgFlowNode,
@@ -149,7 +150,7 @@ export default function ArgCanvas({
 	);
 
 	// Hydrate from SQLite on map switch
-	useMapLoader(mapId, isHydrating, handleNodeUpdate);
+	useMapLoader(mapId, isHydrating, handleNodeUpdate, researchReloadToken);
 
 	// Route position/dimension changes to debounced sync
 	const handleNodesChange = useCallback(
@@ -328,6 +329,10 @@ export default function ArgCanvas({
 					onAddNode={handleAddNode}
 					selectedNode={selectedNode}
 					onUpdateNode={handleNodeUpdate}
+					onResearchImported={() => {
+						setResearchReloadToken((current) => current + 1);
+						setTimeout(() => void fitView({ padding: 0.1, duration: 200 }), 50);
+					}}
 				/>
 			</aside>
 			<div className="relative flex-1">

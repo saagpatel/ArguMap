@@ -53,6 +53,23 @@ export interface EdgePayload {
 	label?: string;
 }
 
+export interface ResearchAdapterLoss {
+	path: string;
+	reason: string;
+	retained_in_canonical_package: boolean;
+}
+
+export interface ResearchProjection {
+	schema_version: string;
+	package_id: string;
+	revision_id: string;
+	schema_digest: string;
+	canonical_package: unknown;
+	nodes: ArgNode[];
+	edges: ArgEdge[];
+	losses: ResearchAdapterLoss[];
+}
+
 export type ArgNodeData = {
 	node_type: NodeType;
 	content: string;
