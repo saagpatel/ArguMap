@@ -393,6 +393,8 @@ mod tests {
         include_str!("../../fixtures/evidence-centered-research/qualified-package-v2.json");
     const FIXTURE_V3: &str =
         include_str!("../../fixtures/evidence-centered-research/qualified-package-v3.json");
+    const FIXTURE_V4: &str =
+        include_str!("../../fixtures/evidence-centered-research/qualified-package-v4.json");
 
     #[test]
     fn shared_package_round_trips_without_loss() {
@@ -454,6 +456,33 @@ mod tests {
             .losses
             .iter()
             .any(|loss| loss.path == "sources/source-unknown-authority/lifecycle_attestation"));
+        assert!(projection
+            .losses
+            .iter()
+            .any(|loss| loss.path == "methods/method-observation/population_binding"));
+        assert!(projection
+            .losses
+            .iter()
+            .all(|loss| loss.retained_in_canonical_package));
+    }
+
+    #[test]
+    fn v4_package_round_trips_with_complete_identity_retained_as_explicit_loss() {
+        let projection = import_research_package(FIXTURE_V4, "map-ecrp-v4")
+            .expect("import complete-identity v4 fixture");
+        assert_eq!(projection.schema_version, CONTRACT_SCHEMA_VERSION_V2);
+        assert_eq!(projection.schema_digest, CONTRACT_SCHEMA_SHA256_V2);
+
+        let original: Value = serde_json::from_str(FIXTURE_V4).expect("parse v4 fixture");
+        let exported: Value =
+            serde_json::from_str(&export_research_package(&projection).expect("export v4 fixture"))
+                .expect("parse v4 export");
+        assert_eq!(canonicalize(&original), canonicalize(&exported));
+        assert_eq!(projection.revision_id, "rev-4");
+        assert!(projection
+            .losses
+            .iter()
+            .any(|loss| loss.path == "sources/source-current/lifecycle_attestation"));
         assert!(projection
             .losses
             .iter()

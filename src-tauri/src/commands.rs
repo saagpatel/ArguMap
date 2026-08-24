@@ -675,7 +675,7 @@ mod tests {
     #[test]
     fn research_package_import_persists_projection_and_preserves_losses() {
         const FIXTURE: &str =
-            include_str!("../../fixtures/evidence-centered-research/qualified-package-v3.json");
+            include_str!("../../fixtures/evidence-centered-research/qualified-package-v4.json");
         let conn = setup_db();
         let map_id = "map-research";
         insert_map(&conn, map_id);
@@ -720,7 +720,7 @@ mod tests {
     #[test]
     fn identical_package_ids_persist_in_distinct_maps_without_global_id_collision() {
         const FIXTURE: &str =
-            include_str!("../../fixtures/evidence-centered-research/qualified-package-v3.json");
+            include_str!("../../fixtures/evidence-centered-research/qualified-package-v4.json");
         let conn = setup_db();
         for map_id in ["map-first", "map-second"] {
             insert_map(&conn, map_id);
