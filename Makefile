@@ -10,8 +10,7 @@ build:
 	npm run build
 
 test:
-	@echo "No JavaScript test script configured; see README Verification for Rust checks."
-	@exit 1
+	cargo test --locked --manifest-path src-tauri/Cargo.toml
 
 lint:
 	@echo "No lint script configured; npm run build performs the TypeScript check."

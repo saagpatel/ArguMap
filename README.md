@@ -30,7 +30,7 @@ ArguMap Studio is a local-first argument mapping tool for macOS. Build structure
 ```bash
 git clone https://github.com/saagpatel/ArguMap
 cd ArguMap
-npm install
+npm ci
 ```
 
 ### Usage
@@ -50,16 +50,18 @@ Run from the repository root using Node.js 20+ and the checked-in npm lockfile:
 npm ci
 npm run build                       # TypeScript check and Vite bundle
 cargo check --locked --manifest-path src-tauri/Cargo.toml
-cargo test --locked --manifest-path src-tauri/Cargo.toml
+cargo test --locked --manifest-path src-tauri/Cargo.toml db::tests  # focused in-memory DB fixtures
+cargo test --locked --manifest-path src-tauri/Cargo.toml            # broader Rust suite
 ```
 
 Rust/Tauri checks need the stable Rust toolchain and macOS developer tools;
 other platforms require their Tauri native build dependencies. `npm run build`
 is the frontend typecheck/build gate. No JavaScript test runner, lint or format
-script is configured; do not use `make test` or `make lint` as passing gates.
-The Rust test command runs any Rust tests present (currently no unit tests),
-so a zero-test result does not establish behavior coverage. No CI test workflow
-is currently configured.
+script is configured. `make test` wraps the existing Rust suite, including
+model, database, command and research-adapter tests. The focused database lane
+uses in-memory SQLite connections, without opening the app or personal maps.
+`make lint` explicitly reports the absent frontend lint script rather than
+passing a placeholder. No CI test workflow is currently configured.
 
 For UI changes, use `npm run dev` for browser checks of canvas/editor rendering.
 For persistence, export or IPC changes, use `npm run tauri dev` in a disposable
