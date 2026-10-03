@@ -42,6 +42,31 @@ npm run tauri dev
 npm run tauri build
 ```
 
+## Verification
+
+Run from the repository root using Node.js 20+ and the checked-in npm lockfile:
+
+```bash
+npm ci
+npm run build                       # TypeScript check and Vite bundle
+cargo check --locked --manifest-path src-tauri/Cargo.toml
+cargo test --locked --manifest-path src-tauri/Cargo.toml
+```
+
+Rust/Tauri checks need the stable Rust toolchain and macOS developer tools;
+other platforms require their Tauri native build dependencies. `npm run build`
+is the frontend typecheck/build gate. No JavaScript test runner, lint or format
+script is configured; do not use `make test` or `make lint` as passing gates.
+The Rust test command runs any Rust tests present (currently no unit tests),
+so a zero-test result does not establish behavior coverage. No CI test workflow
+is currently configured.
+
+For UI changes, use `npm run dev` for browser checks of canvas/editor rendering.
+For persistence, export or IPC changes, use `npm run tauri dev` in a disposable
+macOS user profile with synthetic maps: the native app writes to its application
+data directory. A browser-only run cannot verify SQLite/Tauri behavior. Check
+the affected map/edit/export flow and never use personal maps as test fixtures.
+
 ## Tech Stack
 
 | Layer | Technology |
