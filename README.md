@@ -65,8 +65,9 @@ passing a placeholder. No CI test workflow is currently configured.
 
 For UI changes, use `npm run dev` for browser checks of canvas/editor rendering.
 For persistence, export or IPC changes, use `npm run tauri dev` in a disposable
-macOS user profile with synthetic maps: the native app writes to its application
-data directory. A browser-only run cannot verify SQLite/Tauri behavior. Check
+macOS user profile with synthetic maps: the native app writes its SQLite
+database to `~/.argumap/argumap.db` in the current user's home directory (see
+`src-tauri/src/db.rs`), not the Tauri app-data directory. A browser-only run cannot verify SQLite/Tauri behavior. Check
 the affected map/edit/export flow and never use personal maps as test fixtures.
 
 ## Tech Stack
